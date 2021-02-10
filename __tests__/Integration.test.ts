@@ -4,16 +4,15 @@ import {Inputs} from "../src/Inputs";
 import {GithubReleases} from "../src/Releases";
 import {GithubArtifactUploader} from "../src/ArtifactUploader";
 
-describe('Integration Test', () => {
+describe.skip('Integration Test', () => {
     let action: Action
 
     beforeEach(() => {
         const token = getToken()
-        const context = github.context
         const git = github.getOctokit(token)
 
         const inputs = getInputs()
-        const releases = new GithubReleases(context, git)
+        const releases = new GithubReleases(inputs, git)
         const uploader = new GithubArtifactUploader(releases, inputs.replacesArtifacts)
         action = new Action(inputs, releases, uploader)
     })

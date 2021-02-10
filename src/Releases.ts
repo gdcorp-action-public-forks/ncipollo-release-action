@@ -8,6 +8,7 @@ import {
     ReposListReleasesResponseData,
     ReposUploadReleaseAssetResponseData
 } from "@octokit/types";
+import {Inputs} from "./Inputs";
 
 export interface Releases {
     create(
@@ -48,11 +49,11 @@ export interface Releases {
 }
 
 export class GithubReleases implements Releases {
-    context: Context
     git: InstanceType<typeof GitHub>
+    inputs: Inputs
 
-    constructor(context: Context, git: InstanceType<typeof GitHub>) {
-        this.context = context
+    constructor(inputs: Inputs, git: InstanceType<typeof GitHub>) {
+        this.inputs = inputs
         this.git = git
     }
 
@@ -69,9 +70,9 @@ export class GithubReleases implements Releases {
             body: body,
             name: name,
             draft: draft,
-            owner: this.context.repo.owner,
+            owner: this.inputs.owner,
             prerelease: prerelease,
-            repo: this.context.repo.repo,
+            repo: this.inputs.repo,
             target_commitish: commitHash,
             tag_name: tag
         })
@@ -82,8 +83,8 @@ export class GithubReleases implements Releases {
     ): Promise<OctokitResponse<any>> {
         return this.git.repos.deleteReleaseAsset({
             asset_id: assetId,
-            owner: this.context.repo.owner,
-            repo: this.context.repo.repo
+            owner: this.inputs.owner,
+            repo: this.inputs.repo
         })
     }
 
@@ -91,23 +92,23 @@ export class GithubReleases implements Releases {
         releaseId: number
     ): Promise<OctokitResponse<ReposListReleaseAssetsResponseData>> {
         return this.git.repos.listReleaseAssets({
-            owner: this.context.repo.owner,
+            owner: this.inputs.owner,
             release_id: releaseId,
-            repo: this.context.repo.repo
+            repo: this.inputs.repo
         })
     }
 
     async listReleases(): Promise<OctokitResponse<ReposListReleasesResponseData>> {
         return this.git.repos.listReleases({
-            owner: this.context.repo.owner,
-            repo: this.context.repo.repo
+            owner: this.inputs.owner,
+            repo: this.inputs.repo
         })
     }
 
     async getByTag(tag: string): Promise<OctokitResponse<ReposGetReleaseByTagResponseData>> {
         return this.git.repos.getReleaseByTag({
-            owner: this.context.repo.owner,
-            repo: this.context.repo.repo,
+            owner: this.inputs.owner,
+            repo: this.inputs.repo,
             tag: tag
         })
     }
@@ -127,9 +128,9 @@ export class GithubReleases implements Releases {
             body: body,
             name: name,
             draft: draft,
-            owner: this.context.repo.owner,
+            owner: this.inputs.owner,
             prerelease: prerelease,
-            repo: this.context.repo.repo,
+            repo: this.inputs.repo,
             target_commitish: commitHash,
             tag_name: tag
         })
@@ -151,9 +152,9 @@ export class GithubReleases implements Releases {
             },
             data: file as any,
             name: name,
-            owner: this.context.repo.owner,
+            owner: this.inputs.owner,
             release_id: releaseId,
-            repo: this.context.repo.repo
+            repo: this.inputs.repo
         })
     }
 }
