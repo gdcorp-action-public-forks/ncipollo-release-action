@@ -3,7 +3,12 @@ import * as github from "@actions/github";
 import {Inputs} from "../src/Inputs";
 import {GithubReleases} from "../src/Releases";
 import {GithubArtifactUploader} from "../src/ArtifactUploader";
+import {Artifact} from "../src/Artifact";
+import * as path from "path";
 
+// This test is currently intended to be manually run during development. To run:
+// - Make sure you have an environment variable named GITHUB_TOKEN assigned to your token
+// - Remove skip from the test below
 describe.skip('Integration Test', () => {
     let action: Action
 
@@ -22,22 +27,24 @@ describe.skip('Integration Test', () => {
     })
 
     function getInputs(): Inputs {
+        const artifactPath = path.join(__dirname, 'Integration.test.ts')
+        // new
         const MockInputs = jest.fn<Inputs, any>(() => {
             return {
                 allowUpdates: true,
-                artifacts: [],
-                createdReleaseBody: "body",
-                createdReleaseName: "title",
+                artifacts: [new Artifact(artifactPath)],
+                createdReleaseBody: "release body",
+                createdReleaseName: "release name",
                 commit: "",
-                draft: true,
+                draft: false,
                 owner: "ncipollo",
-                prerelease: false,
+                prerelease: true,
                 replacesArtifacts: true,
                 repo: "actions-playground",
                 tag: "0.0.71",
                 token: getToken(),
                 updatedReleaseBody: "updated body",
-                updatedReleaseName: "updated title"
+                updatedReleaseName: "updated name"
             }
         })
         return new MockInputs();
