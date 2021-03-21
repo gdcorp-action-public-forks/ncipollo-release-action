@@ -1,8 +1,8 @@
 const warnMock = jest.fn()
 
-import { FileArtifactGlobber } from "../src/ArtifactGlobber"
-import { Globber } from "../src/Globber";
-import { Artifact } from "../src/Artifact";
+import {FileArtifactGlobber} from "../src/ArtifactGlobber"
+import {Globber} from "../src/Globber";
+import {Artifact} from "../src/Artifact";
 import untildify = require("untildify");
 
 const contentType = "raw"
@@ -29,13 +29,13 @@ describe("ArtifactGlobber", () => {
         expect(globMock).toBeCalledWith(untildify('~/path'))
         expect(warnMock).not.toBeCalled()
     })
-    
+
     it("globs simple path", () => {
         const globber = createArtifactGlobber()
 
         const expectedArtifacts =
             globResults.map((path) => new Artifact(path, contentType))
-        
+
         expect(globber.globArtifactString('path', 'raw', false))
             .toEqual(expectedArtifacts)
         expect(globMock).toBeCalledWith('path')
@@ -57,12 +57,19 @@ describe("ArtifactGlobber", () => {
         expect(warnMock).not.toBeCalled()
     })
 
-    it("warns when no glob results are produced", () => {
+    it("warns when no glob results are produced and empty results shouldn't throw", () => {
         const globber = createArtifactGlobber([])
-        
+
         expect(globber.globArtifactString('path', 'raw', false))
             .toEqual([])
         expect(warnMock).toBeCalled()
+    })
+
+    it("throws when no glob results are produced and empty results shouild throw", () => {
+        const globber = createArtifactGlobber([])
+        expect(() => {
+            globber.globArtifactString('path', 'raw', true)
+        }).toThrow()
     })
 
     function createArtifactGlobber(results: string[] = globResults): FileArtifactGlobber {
