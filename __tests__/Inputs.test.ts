@@ -59,6 +59,17 @@ describe('Inputs', () => {
         })
     })
 
+    describe('artifactErrorsFailBuild', () => {
+        it('returns false', () => {
+            expect(inputs.artifactErrorsFailBuild).toBe(false)
+        })
+
+        it('returns true', () => {
+            mockGetInput.mockReturnValue('true')
+            expect(inputs.artifactErrorsFailBuild).toBe(true)
+        })
+    })
+
     describe('artifacts', () => {
         it('returns empty artifacts', () => {
             mockGetInput.mockReturnValueOnce('')
