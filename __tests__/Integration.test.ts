@@ -57,7 +57,7 @@ describe.skip('Integration Test', () => {
         const globber = new FileArtifactGlobber()
         const artifactPath = path.join(__dirname, 'Integration.test.ts')
         const artifactString = `~/Desktop/test.txt,blarg.tx, ${artifactPath}`
-        return globber.globArtifactString(artifactString, "raw")
+        return globber.globArtifactString(artifactString, "raw", false)
     }
 
     function getToken(): string {

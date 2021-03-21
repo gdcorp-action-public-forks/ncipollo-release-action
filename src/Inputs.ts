@@ -47,7 +47,7 @@ export class CoreInputs implements Inputs {
                 contentType = 'raw'
             }
             return this.artifactGlobber
-                .globArtifactString(artifacts, contentType)
+                .globArtifactString(artifacts, contentType, this.artifactErrorsFailBuild)
         }
         return []
     }

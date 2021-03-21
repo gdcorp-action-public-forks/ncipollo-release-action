@@ -24,7 +24,7 @@ describe("ArtifactGlobber", () => {
         const expectedArtifacts =
             globResults.map((path) => new Artifact(path, contentType))
 
-        expect(globber.globArtifactString('~/path', 'raw'))
+        expect(globber.globArtifactString('~/path', 'raw', false))
             .toEqual(expectedArtifacts)
         expect(globMock).toBeCalledWith(untildify('~/path'))
         expect(warnMock).not.toBeCalled()
@@ -36,7 +36,7 @@ describe("ArtifactGlobber", () => {
         const expectedArtifacts =
             globResults.map((path) => new Artifact(path, contentType))
         
-        expect(globber.globArtifactString('path', 'raw'))
+        expect(globber.globArtifactString('path', 'raw', false))
             .toEqual(expectedArtifacts)
         expect(globMock).toBeCalledWith('path')
         expect(warnMock).not.toBeCalled()
@@ -50,7 +50,7 @@ describe("ArtifactGlobber", () => {
                 .concat(globResults)
                 .map((path) => new Artifact(path, contentType))
 
-        expect(globber.globArtifactString('path1,path2', 'raw'))
+        expect(globber.globArtifactString('path1,path2', 'raw', false))
             .toEqual(expectedArtifacts)
         expect(globMock).toBeCalledWith('path1')
         expect(globMock).toBeCalledWith('path2')
@@ -59,11 +59,8 @@ describe("ArtifactGlobber", () => {
 
     it("warns when no glob results are produced", () => {
         const globber = createArtifactGlobber([])
-
-        const expectedArtifacts =
-            globResults.map((path) => new Artifact(path, contentType))
-
-        expect(globber.globArtifactString('path', 'raw'))
+        
+        expect(globber.globArtifactString('path', 'raw', false))
             .toEqual([])
         expect(warnMock).toBeCalled()
     })
