@@ -11,6 +11,7 @@ This action will create a github release and optionally upload an artifact to it
 - **body**: An optional body for the release.
 - **bodyFile**: An optional body file for the release. This should be the path to the file.
 - **commit**: An optional commit reference. This will be used to create the tag if it does not exist.
+- **discussionCategory**: When provided this will generate a discussion of the specified category. The category must exist otherwise this will cause the action to fail. This isn't used with draft releases.
 - **draft**: Optionally marks this release as a draft release. Set to `true` to enable.
 - **name**: An optional name for the release. If this is omitted the tag will be used.
 - **omitBody**: Indicates if the release body should be omitted.
@@ -23,6 +24,11 @@ This action will create a github release and optionally upload an artifact to it
 - **repo**: Optionally specify the repo where the release should be generated. Defaults to current repo.
 - **tag**: An optional tag for the release. If this is omitted the git ref will be used (if it is a tag).
 - **token**: (**Required**) The Github token. Typically this will be `${{ secrets.GITHUB_TOKEN }}`.
+
+## Action Outputs
+- **id**: The identifier of the created release.
+- **html_url**: The HTML URL of the release.
+- **upload_url**: The URL for uploading assets to the release.
 
 ## Example
 This example will create a release when tag is pushed:

@@ -1,44 +1,62 @@
 import {Inputs} from "./Inputs";
-import {CreateReleaseResponse, Releases, UpdateReleaseResponse} from "./Releases";
+import {
+    CreateOrUpdateReleaseResponse,
+    CreateReleaseResponse,
+    ReleaseByTagResponse,
+    Releases,
+    UpdateReleaseResponse
+} from "./Releases";
 import {ArtifactUploader} from "./ArtifactUploader";
 import {GithubError} from "./GithubError";
+import {Outputs} from "./Outputs";
 
 export class Action {
     private inputs: Inputs
+    private outputs: Outputs
     private releases: Releases
     private uploader: ArtifactUploader
 
-    constructor(inputs: Inputs, releases: Releases, uploader: ArtifactUploader) {
+    constructor(inputs: Inputs, outputs: Outputs, releases: Releases, uploader: ArtifactUploader) {
         this.inputs = inputs
+        this.outputs = outputs
         this.releases = releases
         this.uploader = uploader
     }
 
     async perform() {
         const releaseResponse = await this.createOrUpdateRelease();
-        const releaseId = releaseResponse.data.id
-        const uploadUrl = releaseResponse.data.upload_url
+        const releaseData = releaseResponse.data
+        const releaseId = releaseData.id
+        const uploadUrl = releaseData.upload_url
 
         const artifacts = this.inputs.artifacts
         if (artifacts.length > 0) {
             await this.uploader.uploadArtifacts(artifacts, releaseId, uploadUrl)
         }
+        
+        this.outputs.applyReleaseData(releaseData)
     }
 
-    private async createOrUpdateRelease(): Promise<CreateReleaseResponse | UpdateReleaseResponse> {
+    private async createOrUpdateRelease(): Promise<CreateOrUpdateReleaseResponse> {
         if (this.inputs.allowUpdates) {
+            let getResponse: ReleaseByTagResponse
             try {
-                const getResponse = await this.releases.getByTag(this.inputs.tag)
-                return await this.updateRelease(getResponse.data.id)
+                getResponse = await this.releases.getByTag(this.inputs.tag)
             } catch (error) {
-                if (Action.noPublishedRelease(error)) {
-                    return await this.updateDraftOrCreateRelease()
-                } else {
-                    throw error
-                }
+                return await this.checkForMissingReleaseError(error)
             }
+
+            return await this.updateRelease(getResponse.data.id)
         } else {
             return await this.createRelease()
+        }
+    }
+
+    private async checkForMissingReleaseError(error: Error): Promise<CreateOrUpdateReleaseResponse> {
+        if (Action.noPublishedRelease(error)) {
+            return await this.updateDraftOrCreateRelease()
+        } else {
+            throw error
         }
     }
 
@@ -48,6 +66,7 @@ export class Action {
             this.inputs.tag,
             this.inputs.updatedReleaseBody,
             this.inputs.commit,
+            this.inputs.discussionCategory,
             this.inputs.draft,
             this.inputs.updatedReleaseName,
             this.inputs.prerelease
@@ -82,6 +101,7 @@ export class Action {
             this.inputs.tag,
             this.inputs.createdReleaseBody,
             this.inputs.commit,
+            this.inputs.discussionCategory,
             this.inputs.draft,
             this.inputs.createdReleaseName,
             this.inputs.prerelease

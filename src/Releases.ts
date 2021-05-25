@@ -6,15 +6,23 @@ import {Inputs} from "./Inputs";
 export type CreateReleaseResponse = RestEndpointMethodTypes["repos"]["createRelease"]["response"]
 export type ReleaseByTagResponse = RestEndpointMethodTypes["repos"]["getReleaseByTag"]["response"]
 export type ListReleasesResponse = RestEndpointMethodTypes["repos"]["listReleases"]["response"]
-export type ListReleaseAssetsResponse = RestEndpointMethodTypes["repos"]["listReleaseAssets"]["response"]
+export type ListReleaseAssetsResponseData = RestEndpointMethodTypes["repos"]["listReleaseAssets"]["response"]["data"]
 export type UpdateReleaseResponse = RestEndpointMethodTypes["repos"]["updateRelease"]["response"]
 export type UploadArtifactResponse = RestEndpointMethodTypes["repos"]["uploadReleaseAsset"]["response"]
+export type CreateOrUpdateReleaseResponse = CreateReleaseResponse | UpdateReleaseResponse
+
+export type ReleaseData = {
+    id: number
+    html_url: string
+    upload_url: string
+}
 
 export interface Releases {
     create(
         tag: string,
         body?: string,
         commitHash?: string,
+        discussionCategory?: string,
         draft?: boolean,
         name?: string,
         prerelease?: boolean
@@ -24,7 +32,7 @@ export interface Releases {
 
     getByTag(tag: string): Promise<ReleaseByTagResponse>
 
-    listArtifactsForRelease(releaseId: number): Promise<ListReleaseAssetsResponse>
+    listArtifactsForRelease(releaseId: number): Promise<ListReleaseAssetsResponseData>
 
     listReleases(): Promise<ListReleasesResponse>
 
@@ -33,6 +41,7 @@ export interface Releases {
         tag: string,
         body?: string,
         commitHash?: string,
+        discussionCategory?: string,
         draft?: boolean,
         name?: string,
         prerelease?: boolean
@@ -61,6 +70,7 @@ export class GithubReleases implements Releases {
         tag: string,
         body?: string,
         commitHash?: string,
+        discussionCategory?: string,
         draft?: boolean,
         name?: string,
         prerelease?: boolean
@@ -69,6 +79,7 @@ export class GithubReleases implements Releases {
         return this.git.repos.createRelease({
             body: body,
             name: name,
+            discussion_category_name: discussionCategory,
             draft: draft,
             owner: this.inputs.owner,
             prerelease: prerelease,
@@ -98,8 +109,8 @@ export class GithubReleases implements Releases {
 
     async listArtifactsForRelease(
         releaseId: number
-    ): Promise<ListReleaseAssetsResponse> {
-        return this.git.repos.listReleaseAssets({
+    ): Promise<ListReleaseAssetsResponseData> {
+        return this.git.paginate(this.git.repos.listReleaseAssets, {
             owner: this.inputs.owner,
             release_id: releaseId,
             repo: this.inputs.repo
@@ -118,6 +129,7 @@ export class GithubReleases implements Releases {
         tag: string,
         body?: string,
         commitHash?: string,
+        discussionCategory?: string,
         draft?: boolean,
         name?: string,
         prerelease?: boolean
@@ -127,6 +139,7 @@ export class GithubReleases implements Releases {
             release_id: id,
             body: body,
             name: name,
+            discussion_category_name: discussionCategory,
             draft: draft,
             owner: this.inputs.owner,
             prerelease: prerelease,
