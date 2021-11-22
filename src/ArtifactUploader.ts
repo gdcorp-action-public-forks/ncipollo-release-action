@@ -10,7 +10,6 @@ export class GithubArtifactUploader implements ArtifactUploader {
     constructor(
         private releases: Releases,
         private replacesExistingArtifacts: boolean = true,
-        private removeArtifacts: boolean = false,
         private throwsUploadErrors: boolean = false,
     ) {
     }
@@ -20,9 +19,6 @@ export class GithubArtifactUploader implements ArtifactUploader {
                           uploadUrl: string): Promise<void> {
         if (this.replacesExistingArtifacts) {
             await this.deleteUpdatedArtifacts(artifacts, releaseId)
-        }
-        if (this.removeArtifacts) {
-            await this.deleteUploadedArtifacts(releaseId)
         }
         for (const artifact of artifacts) {
             await this.uploadArtifact(artifact, releaseId, uploadUrl)
@@ -41,7 +37,7 @@ export class GithubArtifactUploader implements ArtifactUploader {
                 artifact.readFile(),
                 artifact.name,
                 releaseId)
-        } catch (error) {
+        } catch (error: any) {
             if (error.status >= 500 && retry > 0) {
                 core.warning(`Failed to upload artifact ${artifact.name}. ${error.message}. Retrying...`)
                 await this.uploadArtifact(artifact, releaseId, uploadUrl, retry - 1)
@@ -67,15 +63,6 @@ export class GithubArtifactUploader implements ArtifactUploader {
                 core.debug(`Deleting existing artifact ${artifact.name}...`)
                 await this.releases.deleteArtifact(asset.id)
             }
-        }
-    }
-
-    private async deleteUploadedArtifacts(releaseId: number): Promise<void> {
-        const releaseAssets = await this.releases.listArtifactsForRelease(releaseId)
-        for (const artifact of releaseAssets) {
-            const asset = artifact
-            core.debug(`Deleting existing artifact ${artifact.name}...`)
-            await this.releases.deleteArtifact(asset.id)
         }
     }
 }
