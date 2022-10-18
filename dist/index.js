@@ -18,6 +18,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Action = void 0;
 const GithubError_1 = __nccwpck_require__(7433);
+const ReleaseValidator_1 = __nccwpck_require__(7579);
 class Action {
     constructor(inputs, outputs, releases, uploader, artifactDestroyer) {
         this.inputs = inputs;
@@ -25,6 +26,7 @@ class Action {
         this.releases = releases;
         this.uploader = uploader;
         this.artifactDestroyer = artifactDestroyer;
+        this.releaseValidator = new ReleaseValidator_1.ReleaseValidator(inputs.updateOnlyUnreleased);
     }
     perform() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -52,6 +54,8 @@ class Action {
                 catch (error) {
                     return yield this.checkForMissingReleaseError(error);
                 }
+                // Fail if this isn't an unreleased release & updateOnlyUnreleased is enabled.
+                this.releaseValidator.validateReleaseUpdate(getResponse.data);
                 return yield this.updateRelease(getResponse.data.id);
             }
             else {
@@ -234,6 +238,7 @@ const Globber_1 = __nccwpck_require__(8259);
 const Artifact_1 = __nccwpck_require__(8568);
 const untildify_1 = __importDefault(__nccwpck_require__(6732));
 const ArtifactPathValidator_1 = __nccwpck_require__(7818);
+const PathNormalizer_1 = __nccwpck_require__(8103);
 class FileArtifactGlobber {
     constructor(globber = new Globber_1.FileGlobber()) {
         this.globber = globber;
@@ -242,6 +247,7 @@ class FileArtifactGlobber {
         const split = /[,\n]/;
         return artifact.split(split)
             .map(path => path.trimStart())
+            .map(path => PathNormalizer_1.PathNormalizer.normalizePath(path))
             .map(path => FileArtifactGlobber.expandPath(path))
             .map(pattern => this.globPattern(pattern, errorsFailBuild))
             .map((globResult) => FileArtifactGlobber.validatePattern(errorsFailBuild, globResult[1], globResult[0]))
@@ -766,6 +772,9 @@ class CoreInputs {
             return undefined;
         return this.name;
     }
+    get updateOnlyUnreleased() {
+        return core.getInput('updateOnlyUnreleased') == 'true';
+    }
     static get omitNameDuringUpdate() {
         return core.getInput('omitNameDuringUpdate') == 'true';
     }
@@ -817,6 +826,53 @@ class CoreOutputs {
     }
 }
 exports.CoreOutputs = CoreOutputs;
+
+
+/***/ }),
+
+/***/ 8103:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PathNormalizer = void 0;
+const path_1 = __importDefault(__nccwpck_require__(1017));
+class PathNormalizer {
+    static normalizePath(pathString) {
+        return pathString.split(path_1.default.sep).join("/");
+    }
+}
+exports.PathNormalizer = PathNormalizer;
+
+
+/***/ }),
+
+/***/ 7579:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ReleaseValidator = void 0;
+class ReleaseValidator {
+    constructor(updateOnlyUnreleased) {
+        this.updateOnlyUnreleased = updateOnlyUnreleased;
+    }
+    validateReleaseUpdate(releaseResponse) {
+        var _a;
+        if (!this.updateOnlyUnreleased) {
+            return;
+        }
+        if (!releaseResponse.draft && !releaseResponse.prerelease) {
+            throw new Error(`Tried to update "${(_a = releaseResponse.name) !== null && _a !== void 0 ? _a : "release"}" which is neither a draft or prerelease. (updateOnlyUnreleased is on)`);
+        }
+    }
+}
+exports.ReleaseValidator = ReleaseValidator;
 
 
 /***/ }),
@@ -1149,7 +1205,6 @@ const file_command_1 = __nccwpck_require__(2028);
 const utils_1 = __nccwpck_require__(9046);
 const os = __importStar(__nccwpck_require__(2037));
 const path = __importStar(__nccwpck_require__(1017));
-const uuid_1 = __nccwpck_require__(5112);
 const oidc_utils_1 = __nccwpck_require__(2853);
 /**
  * The code to exit an action
@@ -1179,20 +1234,9 @@ function exportVariable(name, val) {
     process.env[name] = convertedVal;
     const filePath = process.env['GITHUB_ENV'] || '';
     if (filePath) {
-        const delimiter = `ghadelimiter_${uuid_1.v4()}`;
-        // These should realistically never happen, but just in case someone finds a way to exploit uuid generation let's not allow keys or values that contain the delimiter.
-        if (name.includes(delimiter)) {
-            throw new Error(`Unexpected input: name should not contain the delimiter "${delimiter}"`);
-        }
-        if (convertedVal.includes(delimiter)) {
-            throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
-        }
-        const commandValue = `${name}<<${delimiter}${os.EOL}${convertedVal}${os.EOL}${delimiter}`;
-        file_command_1.issueCommand('ENV', commandValue);
+        return file_command_1.issueFileCommand('ENV', file_command_1.prepareKeyValueMessage(name, val));
     }
-    else {
-        command_1.issueCommand('set-env', { name }, convertedVal);
-    }
+    command_1.issueCommand('set-env', { name }, convertedVal);
 }
 exports.exportVariable = exportVariable;
 /**
@@ -1210,7 +1254,7 @@ exports.setSecret = setSecret;
 function addPath(inputPath) {
     const filePath = process.env['GITHUB_PATH'] || '';
     if (filePath) {
-        file_command_1.issueCommand('PATH', inputPath);
+        file_command_1.issueFileCommand('PATH', inputPath);
     }
     else {
         command_1.issueCommand('add-path', {}, inputPath);
@@ -1250,7 +1294,10 @@ function getMultilineInput(name, options) {
     const inputs = getInput(name, options)
         .split('\n')
         .filter(x => x !== '');
-    return inputs;
+    if (options && options.trimWhitespace === false) {
+        return inputs;
+    }
+    return inputs.map(input => input.trim());
 }
 exports.getMultilineInput = getMultilineInput;
 /**
@@ -1283,8 +1330,12 @@ exports.getBooleanInput = getBooleanInput;
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function setOutput(name, value) {
+    const filePath = process.env['GITHUB_OUTPUT'] || '';
+    if (filePath) {
+        return file_command_1.issueFileCommand('OUTPUT', file_command_1.prepareKeyValueMessage(name, value));
+    }
     process.stdout.write(os.EOL);
-    command_1.issueCommand('set-output', { name }, value);
+    command_1.issueCommand('set-output', { name }, utils_1.toCommandValue(value));
 }
 exports.setOutput = setOutput;
 /**
@@ -1413,7 +1464,11 @@ exports.group = group;
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function saveState(name, value) {
-    command_1.issueCommand('save-state', { name }, value);
+    const filePath = process.env['GITHUB_STATE'] || '';
+    if (filePath) {
+        return file_command_1.issueFileCommand('STATE', file_command_1.prepareKeyValueMessage(name, value));
+    }
+    command_1.issueCommand('save-state', { name }, utils_1.toCommandValue(value));
 }
 exports.saveState = saveState;
 /**
@@ -1479,13 +1534,14 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.issueCommand = void 0;
+exports.prepareKeyValueMessage = exports.issueFileCommand = void 0;
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const fs = __importStar(__nccwpck_require__(7147));
 const os = __importStar(__nccwpck_require__(2037));
+const uuid_1 = __nccwpck_require__(5112);
 const utils_1 = __nccwpck_require__(9046);
-function issueCommand(command, message) {
+function issueFileCommand(command, message) {
     const filePath = process.env[`GITHUB_${command}`];
     if (!filePath) {
         throw new Error(`Unable to find environment variable for file command ${command}`);
@@ -1497,7 +1553,22 @@ function issueCommand(command, message) {
         encoding: 'utf8'
     });
 }
-exports.issueCommand = issueCommand;
+exports.issueFileCommand = issueFileCommand;
+function prepareKeyValueMessage(key, value) {
+    const delimiter = `ghadelimiter_${uuid_1.v4()}`;
+    const convertedValue = utils_1.toCommandValue(value);
+    // These should realistically never happen, but just in case someone finds a
+    // way to exploit uuid generation let's not allow keys or values that contain
+    // the delimiter.
+    if (key.includes(delimiter)) {
+        throw new Error(`Unexpected input: name should not contain the delimiter "${delimiter}"`);
+    }
+    if (convertedValue.includes(delimiter)) {
+        throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
+    }
+    return `${key}<<${delimiter}${os.EOL}${convertedValue}${os.EOL}${delimiter}`;
+}
+exports.prepareKeyValueMessage = prepareKeyValueMessage;
 //# sourceMappingURL=file-command.js.map
 
 /***/ }),
@@ -2084,8 +2155,9 @@ exports.context = new Context.Context();
  * @param     token    the repo PAT or GITHUB_TOKEN
  * @param     options  other options to set
  */
-function getOctokit(token, options) {
-    return new utils_1.GitHub(utils_1.getOctokitOptions(token, options));
+function getOctokit(token, options, ...additionalPlugins) {
+    const GitHubWithPlugins = utils_1.GitHub.plugin(...additionalPlugins);
+    return new GitHubWithPlugins(utils_1.getOctokitOptions(token, options));
 }
 exports.getOctokit = getOctokit;
 //# sourceMappingURL=github.js.map
@@ -2167,7 +2239,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getOctokitOptions = exports.GitHub = exports.context = void 0;
+exports.getOctokitOptions = exports.GitHub = exports.defaults = exports.context = void 0;
 const Context = __importStar(__nccwpck_require__(7916));
 const Utils = __importStar(__nccwpck_require__(1994));
 // octokit + plugins
@@ -2176,13 +2248,13 @@ const plugin_rest_endpoint_methods_1 = __nccwpck_require__(3543);
 const plugin_paginate_rest_1 = __nccwpck_require__(3654);
 exports.context = new Context.Context();
 const baseUrl = Utils.getApiBaseUrl();
-const defaults = {
+exports.defaults = {
     baseUrl,
     request: {
         agent: Utils.getProxyAgent(baseUrl)
     }
 };
-exports.GitHub = core_1.Octokit.plugin(plugin_rest_endpoint_methods_1.restEndpointMethods, plugin_paginate_rest_1.paginateRest).defaults(defaults);
+exports.GitHub = core_1.Octokit.plugin(plugin_rest_endpoint_methods_1.restEndpointMethods, plugin_paginate_rest_1.paginateRest).defaults(exports.defaults);
 /**
  * Convience function to correctly format Octokit Options to pass into the constructor.
  *
