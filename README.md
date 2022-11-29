@@ -2,6 +2,16 @@
 
 This action will create a GitHub release and optionally upload an artifact to it.
 
+<div align="center">
+<strong>
+<samp>
+
+[English](README.md) · [简体中文](README.zh-Hans.md)
+
+</samp>
+</strong>
+</div>
+
 ## Action Inputs
 | Input name                 | Description                                                                               	                                                                                                                                                         | Required 	 | Default Value        |
 |----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------|----------------------|
@@ -27,6 +37,7 @@ This action will create a GitHub release and optionally upload an artifact to it
 | removeArtifacts            | Indicates if existing release artifacts should be removed.                                                                                                                                                                                          | false      | false                |
 | replacesArtifacts          | Indicates if existing release artifacts should be replaced.                                                                                                                                                                                         | false      | true                 |
 | repo                       | Optionally specify the repo where the release should be generated.                                                                                                                                                                                  | false      | current repo         |
+| skipIfReleaseExists        | When skipIfReleaseExists is enabled the action will be skipped if a non-draft release already exists for the provided tag.                                                                                                                          | false      | false                |
 | tag                        | An optional tag for the release. If this is omitted the git ref will be used (if it is a tag).                                                                                                                                                      | false      | ""                   |
 | token                      | The GitHub token. This will default to the GitHub app token. This is primarily useful if you want to use your personal token (for targeting other repos, etc).  If you are using a personal access token it should have access to the `repo` scope. | false      | github.token         |
 | updateOnlyUnreleased       | When allowUpdates is enabled, this will fail the action if the release it is updating is not a draft or a prerelease.                                                                                                                               | false      | false                |
@@ -61,8 +72,6 @@ jobs:
       with:
         artifacts: "release.tar.gz,foo/*.txt"
         bodyFile: "body.md"
-        token: ${{ secrets.YOUR_GITHUB_TOKEN }}
-
 ```
 
 ## Notes
