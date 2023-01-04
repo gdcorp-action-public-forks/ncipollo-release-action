@@ -15,6 +15,7 @@ export interface Inputs {
     readonly createdReleaseName?: string
     readonly discussionCategory?: string
     readonly generateReleaseNotes: boolean
+    readonly makeLatest?: string
     readonly owner: string
     readonly removeArtifacts: boolean
     readonly replacesArtifacts: boolean
@@ -134,6 +135,10 @@ export class CoreInputs implements Inputs {
     get generateReleaseNotes(): boolean {
         const generate = core.getInput('generateReleaseNotes')
         return generate == 'true'
+    }
+
+    get makeLatest(): string {
+        return core.getInput('makeLatest')
     }
 
     get owner(): string {

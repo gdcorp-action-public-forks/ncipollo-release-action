@@ -225,6 +225,23 @@ describe('Inputs', () => {
         });
     })
 
+    describe('makeLatest', () => {
+        it('returns legacy', () => {
+            mockGetInput.mockReturnValueOnce('legacy')
+            expect(inputs.makeLatest).toBe('legacy')
+        })
+
+        it('returns false', () => {
+            mockGetInput.mockReturnValueOnce('false')
+            expect(inputs.makeLatest).toBe('false')
+        })
+
+        it('returns true', () => {
+            mockGetInput.mockReturnValueOnce('true')
+            expect(inputs.makeLatest).toBe('true')
+        })
+    })
+
     describe('owner', () => {
         it('returns owner from context', function () {
             process.env.GITHUB_REPOSITORY = "owner/repo"
